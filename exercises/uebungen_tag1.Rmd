@@ -1,0 +1,235 @@
+---
+title: "Übungen Tag 1 – Grundlagen, Vektoren & Data Frames"
+subtitle: "R Programmierung Grundkurs · FVA BW · Seminar 2552"
+date: "Juni 2026"
+output:
+  html_notebook:
+    toc: true
+    toc_float: true
+    theme: flatly
+    highlight: tango
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+> **Hinweis:** Schreibt eure Lösung direkt in den jeweiligen Code-Chunk.
+> Führt jeden Chunk mit **Strg+Shift+Enter** aus.
+> Musterlösungen findet ihr in `solutions/loesungen_tag1.Rmd`.
+
+---
+
+# Block 1 – Vektoren und erste Funktionen
+
+## Aufgabe 1.1 – Baumhöhen-Vektor
+
+Erstellt einen Vektor `baumhoehen` mit folgenden Höhen (in Metern):
+`18.5, 24.0, 31.2, 15.8, 27.6, 22.3, 19.1, 28.9, 33.4, 16.7`
+
+```{r a1-1}
+# Dein Code hier
+
+```
+
+## Aufgabe 1.2 – Grundlegende Operationen
+
+Berechnet aus `baumhoehen`:
+
+a) Minimum, Maximum und Mittelwert
+b) Wie viele Bäume sind höher als 25 m?
+c) Den Vektor von groß nach klein sortiert
+
+```{r a1-2}
+# a) min, max, mean
+
+# b) Anzahl Bäume > 25 m
+
+# c) Sortieren
+
+```
+
+## Aufgabe 1.3 – Sequenzen
+
+a) Erstellt einen Vektor `bhd_klassen` mit Werten 10, 20, 30, 40, 50, 60 (mit `seq()`)
+b) Erstellt einen Vektor `standorte`, der die Werte
+   `c("Nord","Sued","Ost")` **dreimal** wiederholt (mit `rep()`)
+
+```{r a1-3}
+# a) BHD-Klassen
+
+# b) Standorte wiederholen
+
+```
+
+## Aufgabe 1.4 – Baumarten als names
+
+Weist dem Vektor aus Aufgabe 1.1 folgende Namen zu:
+
+```r
+c("Fi","Fi","Bu","Ki","Bu","La","Ki","Do","Bu","Fi")
+```
+
+Dann: Gebt nur die Höhen der Buchen (`"Bu"`) aus.
+
+```{r a1-4}
+# Namen zuweisen
+
+# Höhen der Buchen
+
+```
+
+## Aufgabe 1.5 – Eigene Funktion
+
+Schreibt eine Funktion `grundflaeche()`, die den Grundflächenwert
+eines Baumes (m²) aus dem BHD (cm) berechnet.
+
+Formel: `G = π × (BHD/200)²`
+
+Testet die Funktion mit BHD = 30 cm. Erwartet: ca. 0.0707 m²
+
+```{r a1-5}
+# Funktion definieren
+grundflaeche <- function(bhd) {
+  # Dein Code hier
+}
+
+# Test
+grundflaeche(30)
+```
+
+---
+
+# Block 2 – Data Frames & CSV
+
+## Aufgabe 2.1 – Datensatz einlesen
+
+Lest den Bestandsdatensatz ein:
+
+```r
+bestand <- read.csv("../data/bestand.csv")
+```
+
+Gebt dann aus:
+a) Anzahl Zeilen und Spalten
+b) Die ersten 6 Zeilen
+c) Spaltennamen und Datentypen (mit `str()`)
+
+```{r a2-1}
+# Einlesen
+
+# a) Dimensionen
+
+# b) Erste 6 Zeilen
+
+# c) Struktur
+
+```
+
+## Aufgabe 2.2 – Spalten ansprechen
+
+a) Gebt nur die Spalte `baumart` aus
+b) Berechnet den Mittelwert der Spalte `hoehe_m` (NA-Werte ignorieren!)
+c) Wie viele verschiedene Baumarten gibt es? (Tipp: `unique()` + `length()`)
+
+```{r a2-2}
+# a) Spalte baumart
+
+# b) Mittlere Höhe
+
+# c) Anzahl Baumarten
+
+```
+
+## Aufgabe 2.3 – NA-Behandlung
+
+a) Wie viele NA-Werte gibt es je Spalte? (`colSums(is.na(...))`)
+b) Erstellt einen neuen Data Frame `bestand_clean` ohne Zeilen mit NAs
+c) Vergleicht die Zeilenanzahl vor und nach der Bereinigung
+
+```{r a2-3}
+# a) NAs je Spalte
+
+# b) Bereinigter Data Frame
+
+# c) Vergleich
+
+```
+
+## Aufgabe 2.4 – Zeilen filtern (Base R)
+
+Filtert aus `bestand_clean`:
+
+a) Alle Fichten (`baumart == "Fichte"`)
+b) Alle Bäume mit Höhe ≥ 25 m
+c) Alle Fichten auf dem Standort "Nord"
+
+```{r a2-4}
+# a) Fichten
+
+# b) Hoehe >= 25 m
+
+# c) Fichten auf Nord
+
+```
+
+## Aufgabe 2.5 – Neue Spalte & Funktion anwenden
+
+a) Fügt dem `bestand_clean` eine neue Spalte `volumen_m3` hinzu.
+   Nutzt dafür die Volumen-Funktion aus dem Notebook:
+
+   `volumen = π × (bhd_cm/200)² × hoehe_m × 0.5`
+
+b) Gebt den maximalen und den mittleren Volumen-Wert aus.
+
+```{r a2-5}
+# a) Funktion definieren und Spalte berechnen
+berechne_volumen <- function(hoehe, bhd) {
+  pi * (bhd / 200)^2 * hoehe * 0.5
+}
+
+# Spalte hinzufügen
+
+# b) max und mean
+
+```
+
+---
+
+# Praxisprojekt – Eigener Datensatz erkunden
+
+Wenn ihr einen eigenen Datensatz mitgebracht habt, lest ihn hier ein
+und beantwortet folgende Fragen. Andernfalls nutzt `bestand_clean`.
+
+```{r praxis}
+# 1. Datensatz einlesen (Pfad anpassen!)
+# eigene_daten <- read.csv("pfad/zu/datei.csv")
+
+# 2. Struktur und Dimensionen
+
+# 3. Fehlende Werte identifizieren
+
+# 4. Eine eigene Hilfsfunktion schreiben und anwenden
+
+# 5. Erste Kennzahlen (mean, sd, table)
+
+```
+
+---
+
+# Bonusaufgabe
+
+Schreibt eine Funktion `beschreibe_vektor()`, die einen numerischen
+Vektor als Eingabe nimmt und folgende Kennzahlen als **benannten
+Vektor** zurückgibt: `n`, `min`, `max`, `mean`, `sd` (alle gerundet
+auf 1 Dezimalstelle).
+
+```{r bonus}
+beschreibe_vektor <- function(x, na.rm = TRUE) {
+  # Dein Code hier
+}
+
+# Test
+beschreibe_vektor(bestand_clean$hoehe_m)
+```

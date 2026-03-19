@@ -1,0 +1,275 @@
+---
+title: "Tag 3 · Block 2 – Schleifen, Apply & Automatisierung"
+subtitle: "R Programmierung Grundkurs · FVA BW · Seminar 2552"
+date: "Juni 2026"
+output:
+  html_notebook:
+    toc: true
+    toc_float: true
+    theme: flatly
+    highlight: tango
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+library(dplyr)
+library(ggplot2)
+library(readr)
+```
+
+---
+
+# Wann brauche ich Schleifen?
+
+In R kann man vieles **ohne Schleifen** lösen (Vektorisierung, dplyr).
+Schleifen und `lapply` sind dann nützlich, wenn:
+
+- Man **mehrere Dateien** einlesen und verarbeiten will
+- **Gleiche Auswertung** auf verschiedene Gruppen oder Datensätze
+- Das Ergebnis von Iteration zu Iteration abhängt (seltener)
+
+---
+
+# `for`-Schleifen
+
+## Grundstruktur
+
+```{r for-basis}
+# Syntax: for (variable in sequenz) { koerper }
+for (i in 1:5) {
+  cat("Iteration:", i, "\n")
+}
+```
+
+```{r for-vektor}
+baumarten <- c("Fichte", "Buche", "Kiefer")
+
+for (art in baumarten) {
+  cat("Baumart:", art, "\n")
+}
+```
+
+## Ergebnisse sammeln
+
+```{r for-ergebnisse}
+baumarten <- c("Fichte", "Buche", "Kiefer", "Douglasie", "Tanne")
+bestand   <- read_csv("../data/bestand.csv", show_col_types = FALSE) |>
+  na.omit()
+
+# Leeren Vektor vorbereiten, dann befüllen
+mittlere_hoehen <- numeric(length(baumarten))
+names(mittlere_hoehen) <- baumarten
+
+for (i in seq_along(baumarten)) {
+  teilmenge <- bestand[bestand$baumart == baumarten[i], ]
+  mittlere_hoehen[i] <- mean(teilmenge$hoehe_m)
+}
+
+round(mittlere_hoehen, 1)
+```
+
+> **Wichtig:** Immer **vorher einen Behälter anlegen** (z. B.
+> `numeric(n)`), nie innerhalb der Schleife mit `c()` anhängen
+> (sehr langsam bei großen Daten).
+
+---
+
+# Vektorisierung vs. Schleife
+
+```{r vektorisierung}
+hoehen <- bestand$hoehe_m
+
+# ❌ Schleife – unnötig langsam
+ergebnis_schleife <- numeric(length(hoehen))
+for (i in seq_along(hoehen)) {
+  ergebnis_schleife[i] <- hoehen[i]^2
+}
+
+# ✅ Vektorisiert – R-typisch und schnell
+ergebnis_vekt <- hoehen^2
+
+identical(ergebnis_schleife, ergebnis_vekt)  # TRUE
+```
+
+```{r ifelse}
+# ifelse() statt if/else in Schleife
+bestand <- bestand |>
+  mutate(groesse = ifelse(hoehe_m >= 25, "gross", "mittel"))
+
+table(bestand$groesse)
+```
+
+---
+
+# `if` / `else` – bedingte Logik
+
+```{r if-else}
+beurteile_bhd <- function(bhd) {
+  if (bhd < 15) {
+    "Schwache Durchforstung"
+  } else if (bhd < 35) {
+    "Mittlere Staerke"
+  } else {
+    "Starkes Holz"
+  }
+}
+
+beurteile_bhd(12)
+beurteile_bhd(28)
+beurteile_bhd(45)
+```
+
+---
+
+# `lapply()` und `sapply()` – R-typische Alternativen
+
+```{r lapply-basis}
+# lapply gibt immer eine Liste zurück
+baumarten <- c("Fichte", "Buche", "Kiefer")
+
+ergebnisse <- lapply(baumarten, function(art) {
+  teilmenge <- bestand[bestand$baumart == art, ]
+  data.frame(
+    baumart      = art,
+    n            = nrow(teilmenge),
+    mittl_hoehe  = round(mean(teilmenge$hoehe_m), 1),
+    mittl_bhd    = round(mean(teilmenge$bhd_cm), 1)
+  )
+})
+
+# Liste zu Data Frame zusammenführen (dplyr)
+bind_rows(ergebnisse)
+```
+
+```{r sapply-basis}
+# sapply vereinfacht das Ergebnis (Vektor statt Liste), wenn möglich
+sapply(baumarten, function(art) {
+  mean(bestand$hoehe_m[bestand$baumart == art])
+}) |> round(1)
+```
+
+> **Ausblick tidyverse:** Im tidyverse-Ökosystem gibt es `purrr::map()`
+> als moderne Alternative zu `lapply()`. Die Funktionsweise ist identisch,
+> aber `map()` ist strikter in der Rückgabe und lässt sich besser in Pipelines
+> einbetten. Für diesen Kurs reicht `lapply()`/`sapply()` vollständig aus.
+
+---
+
+# Mehrere Dateien automatisiert einlesen
+
+```{r lapply-dateien}
+# Alle CSV-Dateien im data/-Ordner auflisten
+dateien <- list.files("../data/", pattern = "\\.csv$", full.names = TRUE)
+dateien
+
+# Alle einlesen und zu einem Data Frame zusammenführen
+alle_bestaende <- lapply(dateien, function(pfad) {
+  df <- read_csv(pfad, show_col_types = FALSE)
+  df$quelle <- basename(pfad)  # Dateiname als Herkunftsspalte
+  df
+}) |>
+  bind_rows()  # dplyr: Liste von DFs stapeln
+
+nrow(alle_bestaende)
+table(alle_bestaende$quelle)
+```
+
+---
+
+# Schleifen + Funktionen kombinieren
+
+Das **Herzstück des Tages**: Funktionen aus Tag 1+2 jetzt
+auf viele Datensätze gleichzeitig anwenden.
+
+```{r funktion-vorher}
+# Unsere Funktion aus Tag 2
+auswertung_nach_baumart <- function(df, min_hoehe = 10) {
+  df |>
+    filter(hoehe_m >= min_hoehe, !is.na(hoehe_m)) |>
+    group_by(baumart) |>
+    summarise(
+      n           = n(),
+      mittl_hoehe = round(mean(hoehe_m), 1),
+      mittl_bhd   = round(mean(bhd_cm, na.rm = TRUE), 1),
+      .groups     = "drop"
+    )
+}
+```
+
+```{r lapply-funktion}
+# Funktion auf alle Dateien anwenden
+dateien <- list.files("../data/", pattern = "\\.csv$", full.names = TRUE)
+
+resultate <- lapply(dateien, function(pfad) {
+  df  <- read_csv(pfad, show_col_types = FALSE) |> na.omit()
+  res <- auswertung_nach_baumart(df)
+  res$datei <- basename(pfad)
+  res
+}) |>
+  bind_rows()
+
+# Ergebnis ansehen
+resultate |> arrange(datei, desc(mittl_hoehe))
+```
+
+```{r lapply-plot}
+# Plot-Funktion aus Tag 2 auf jeden Standort anwenden
+standorte <- unique(bestand$standort)
+
+plots <- lapply(standorte, function(st) {
+  df_sub <- bestand[bestand$standort == st, ]
+  ggplot(df_sub, aes(x = bhd_cm, y = hoehe_m, colour = baumart)) +
+    geom_point(alpha = 0.5) +
+    labs(title = paste("Standort:", st),
+         x = "BHD (cm)", y = "Höhe (m)") +
+    theme_bw(base_size = 10) +
+    theme(legend.position = "bottom")
+})
+
+# Ersten Plot anzeigen
+plots[[1]]
+```
+
+---
+
+# `tryCatch()` – Fehler in Schleifen abfangen
+
+```{r trycatch}
+# Robuste Dateiverarbeitung – einzelne Fehler stoppen nicht die Schleife
+ergebnisse_robust <- lapply(dateien, function(pfad) {
+  tryCatch({
+    df <- read_csv(pfad, show_col_types = FALSE) |> na.omit()
+    list(ok = TRUE, pfad = basename(pfad), n = nrow(df))
+  }, error = function(e) {
+    list(ok = FALSE, pfad = basename(pfad), fehler = conditionMessage(e))
+  })
+})
+
+# Nur erfolgreiche Ergebnisse
+ergebnisse_ok <- Filter(function(x) x$ok, ergebnisse_robust)
+cat("Erfolgreich eingelesen:", length(ergebnisse_ok), "von", length(dateien), "\n")
+```
+
+---
+
+# Zusammenfassung
+
+| Konzept             | Wann nutzen?                                     |
+|:--------------------|:-------------------------------------------------|
+| `for`-Schleife      | Wenn Reihenfolge/Abhängigkeit wichtig ist        |
+| `lapply()`          | Gleiche Funktion auf Liste/Vektor anwenden       |
+| `sapply()`          | Wie `lapply()`, aber vereinfacht zu Vektor       |
+| `bind_rows()`       | Liste von Data Frames zusammenführen             |
+| `ifelse()`          | Bedingte Spalten in Data Frame                   |
+| `tryCatch()`        | Fehler in Schleifen abfangen                     |
+| Vektorisierung      | Arithmetik auf Vektoren – immer bevorzugen       |
+
+---
+
+> **Nachmittag (Block 3+4):** Abschlussprojekt –
+> alles aus 3 Tagen in einer Mini-Analyse kombinieren!

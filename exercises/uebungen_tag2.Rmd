@@ -1,0 +1,229 @@
+---
+title: "Übungen Tag 2 – dplyr & ggplot2"
+subtitle: "R Programmierung Grundkurs · FVA BW · Seminar 2552"
+date: "Juni 2026"
+output:
+  html_notebook:
+    toc: true
+    toc_float: true
+    theme: flatly
+    highlight: tango
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo       = TRUE,
+  message    = FALSE,
+  warning    = FALSE,
+  fig.width  = 7,
+  fig.height = 4.5
+)
+library(dplyr)
+library(ggplot2)
+library(readr)
+```
+
+```{r daten, include=FALSE}
+bestand <- read_csv("../data/bestand.csv") |> na.omit()
+```
+
+> **Musterlösungen:** `solutions/loesungen_tag2.Rmd`
+
+---
+
+# Block 1 – dplyr
+
+## Aufgabe 1.1 – filter()
+
+a) Filtert alle Bäume mit BHD > 30 cm
+b) Filtert alle Bäume der Abteilung "A1" auf dem Standort "Nord"
+c) Filtert alle Bäume, die WEDER Fichte NOCH Kiefer sind
+   (Tipp: `!baumart %in% c(...)`)
+
+```{r a1-1}
+# a)
+
+# b)
+
+# c)
+
+```
+
+## Aufgabe 1.2 – select() & mutate()
+
+a) Wählt nur die Spalten `baumart`, `hoehe_m`, `bhd_cm`, `standort`
+b) Fügt eine Spalte `hd_verhaeltnis` hinzu: `(hoehe_m * 100) / bhd_cm`
+   (H/D-Verhältnis, dimensionslos)
+c) Klassifiziert das H/D-Verhältnis mit `ifelse()`:
+   - HD > 80: "schlank"
+   - HD ≤ 80: "stabil"
+
+```{r a1-2}
+# a)
+
+# b) + c)
+
+```
+
+## Aufgabe 1.3 – group_by() + summarise()
+
+Erstellt eine Übersichtstabelle, die für jede **Baumart** folgendes zeigt:
+
+- Anzahl Bäume `n`
+- Mittlere Höhe (1 Dezimalstelle)
+- Mittlerer BHD (1 Dezimalstelle)
+- Anteil Bäume mit Höhe > 25 m (`mean(hoehe_m > 25)`)
+
+Sortiert nach Anzahl (absteigend).
+
+```{r a1-3}
+
+```
+
+## Aufgabe 1.4 – Komplette Pipeline
+
+Schreibt eine **einzige Pipeline** (von `bestand` bis zum Ergebnis), die:
+
+1. Nur Bäume mit `alter_jahre >= 40` behält
+2. Eine neue Spalte `volumen_m3` berechnet: `π × (bhd_cm/200)² × hoehe_m × 0.5`
+3. Nach `standort` und `baumart` gruppiert
+4. Je Gruppe: `n`, `mittl_volumen` (2 Dezimalstellen) und `total_volumen`
+5. Nach `total_volumen` absteigend sortiert
+
+```{r a1-4}
+
+```
+
+## Aufgabe 1.5 – Funktion kapseln
+
+Kapselt eure Pipeline aus 1.4 in eine Funktion `volumen_je_gruppe()`,
+die als Parameter akzeptiert:
+
+- `df`: Data Frame
+- `min_alter`: Mindestalter (Standard: 40)
+- `gruppe`: Gruppierungsspalte als character (Standard: "standort")
+
+```{r a1-5}
+volumen_je_gruppe <- function(df, min_alter = 40, gruppe = "standort") {
+  # Dein Code hier
+}
+
+# Tests
+volumen_je_gruppe(bestand)
+volumen_je_gruppe(bestand, min_alter = 60, gruppe = "baumart")
+```
+
+---
+
+# Block 2 – ggplot2
+
+## Aufgabe 2.1 – Scatterplot
+
+Erstellt einen Scatterplot `hoehe_m` vs. `bhd_cm`:
+
+- Punkte mit `alpha = 0.5` und `size = 1.5`
+- Farbe nach `baumart`
+- Sinnvolle Achsenbeschriftungen und Titel
+- Theme: `theme_bw()`
+
+```{r a2-1}
+
+```
+
+## Aufgabe 2.2 – Boxplot
+
+Erstellt einen Boxplot der Höhenverteilung je **Standort**:
+
+- Farbige Füllung je Standort (`fill = standort`)
+- Legende ausblenden (`theme(legend.position = "none")`)
+- Horizontal ausrichten (`coord_flip()`)
+- Standorte nach medianem BHD sortieren (`reorder()`)
+
+```{r a2-2}
+
+```
+
+## Aufgabe 2.3 – Histogramm mit facets
+
+Erstellt ein Histogramm der `bhd_cm`-Verteilung:
+
+- Nur für Baumarten: Fichte, Buche, Kiefer, Douglasie
+- `binwidth = 5`
+- `facet_wrap(~baumart)` für eigene Grafik je Art
+- Keine Legende
+
+```{r a2-3}
+
+```
+
+## Aufgabe 2.4 – Grafik speichern
+
+Speichert einen eurer Plots als PNG in einem Ordner `outputs/`:
+
+```{r a2-4, eval=FALSE}
+# Ordner anlegen falls nicht vorhanden
+dir.create("../outputs", showWarnings = FALSE)
+
+# Plot erstellen und speichern
+# ggsave(...)
+```
+
+## Aufgabe 2.5 – Plot-Funktion
+
+Schreibt eine Funktion `plot_bhd_hoehe()`, die:
+
+- Einen Scatterplot BHD vs. Höhe erstellt
+- Als Parameter `df` (Data Frame) und `farbe` (Spaltenname als character)
+  akzeptiert
+- Einen aussagekräftigen Titel erzeugt (Tipp: `paste()`)
+- `theme_bw()` verwendet
+
+```{r a2-5}
+plot_bhd_hoehe <- function(df, farbe = "baumart") {
+  # Dein Code hier
+}
+
+# Tests
+plot_bhd_hoehe(bestand, "baumart")
+plot_bhd_hoehe(bestand, "standort")
+```
+
+---
+
+# Praxisprojekt – Vollständige Auswertung
+
+Erstellt eine **vollständige Auswertung** eures Datensatzes (oder
+`bestand`) mit:
+
+1. Einer dplyr-Pipeline mit eigener Analysefunktion
+2. Mindestens **2 ggplot2-Grafiken**
+3. Sauberem Code mit Kommentaren
+
+```{r praxis-1}
+# 1. Analysefunktion
+
+```
+
+```{r praxis-2}
+# 2. Grafik 1
+
+```
+
+```{r praxis-3}
+# 3. Grafik 2
+
+```
+
+---
+
+# Bonusaufgabe
+
+Kombiniert dplyr und ggplot2: Berechnet für jede Baumart den
+**mittleren BHD je Abteilung** und visualisiert das Ergebnis
+als **Heatmap** (`geom_tile()`) mit Abteilung auf der x-Achse
+und Baumart auf der y-Achse.
+
+```{r bonus}
+
+```

@@ -1,0 +1,247 @@
+---
+title: "Tag 1 · Block 2 – Data Frames: Einlesen, Inspizieren & NA-Behandlung"
+subtitle: "R Programmierung Grundkurs · FVA BW · Seminar 2552"
+date: "Juni 2026"
+output:
+  html_notebook:
+    toc: true
+    toc_float: true
+    theme: flatly
+    highlight: tango
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+library(readr)
+library(dplyr)
+library(readxl)
+```
+
+---
+
+# Data Frames – die Tabelle in R
+
+Ein **Data Frame** ist eine Tabelle:
+
+- Jede **Spalte** = ein Vektor (gleicher Typ)
+- Jede **Zeile** = eine Beobachtung
+- Spalten können **verschiedene Typen** haben (numeric, character, …)
+
+```{r df-erstellen}
+# Kleinen Data Frame manuell erstellen
+baeume <- data.frame(
+  baumart = c("Fichte", "Buche", "Kiefer", "Tanne"),
+  hoehe_m = c(24.5, 28.0, 18.5, 22.0),
+  bhd_cm  = c(28.3, 32.1, 21.5, 25.0),
+  nadelholz = c(TRUE, FALSE, TRUE, TRUE)
+)
+
+baeume
+```
+
+---
+
+# Data Frame inspizieren
+
+```{r inspect-str}
+glimpse(baeume)    # Kompakter Überblick: Typen und erste Werte
+```
+
+```{r inspect-summary}
+summary(baeume)    # Statistische Kennzahlen je Spalte
+```
+
+```{r inspect-head-tail}
+head(baeume, 3)    # Erste 3 Zeilen
+tail(baeume, 2)    # Letzte 2 Zeilen
+```
+
+```{r inspect-dim}
+nrow(baeume)       # Anzahl Zeilen
+ncol(baeume)       # Anzahl Spalten
+dim(baeume)        # beides auf einmal
+names(baeume)      # Spaltennamen
+```
+
+---
+
+# Spalten- und Zeilenzugriff
+
+```{r zugriff-dollar}
+# Spalte mit $ (empfohlen)
+baeume$hoehe_m
+
+# Mittelwert einer Spalte
+mean(baeume$hoehe_m)
+```
+
+```{r zugriff-eckig}
+# [zeile, spalte] – leere Angabe = alle
+baeume[1, ]         # erste Zeile
+baeume[, "baumart"] # Spalte "baumart"
+baeume[2, 3]        # Zeile 2, Spalte 3
+```
+
+```{r zugriff-filter}
+# Zeilen filtern (Base R)
+baeume[baeume$nadelholz == TRUE, ]
+baeume[baeume$hoehe_m > 22, ]
+```
+
+```{r neue-spalte}
+# Neue Spalte berechnen
+baeume$grundflaeche_m2 <- pi * (baeume$bhd_cm / 200)^2
+baeume
+```
+
+---
+
+# CSV-Dateien einlesen
+
+Wir verwenden `read_csv()` aus dem **readr**-Paket. readr ist Teil von
+**tidyverse** – der Paketsammlung, die wir in diesem Kurs durchgehend
+nutzen (`dplyr`, `ggplot2`, `readr` sind alle darin enthalten).
+
+```{r csv-lesen}
+# Unser Bestandsdatensatz (Komma-getrennt, Punkt als Dezimalzeichen)
+bestand <- read_csv("../data/bestand.csv")
+
+nrow(bestand)
+ncol(bestand)
+names(bestand)
+```
+
+```{r csv-head}
+head(bestand)
+```
+
+```{r csv-glimpse}
+glimpse(bestand)
+```
+
+> **Tibble statt Data Frame:** `read_csv()` gibt ein **Tibble** zurück –
+> eine modernere Variante des Data Frames aus dem tidyverse. Ein Tibble
+> verhält sich fast identisch zu einem Data Frame, hat aber einige
+> praktische Vorteile: Es zeigt beim Ausdrucken nur die ersten 10 Zeilen
+> und listet die Datentypen jeder Spalte direkt an.
+> Für alle tidyverse-Funktionen (`dplyr`, `ggplot2` etc.) ist ein Tibble
+> die bevorzugte Eingabe.
+
+## Welche Funktion für welches Format?
+
+| Format                                | Funktion        | Beispiel                     |
+|:--------------------------------------|:----------------|:-----------------------------|
+| CSV international (`,` + `.` Dezimal) | `read_csv()`    | exportiert von R, Excel (EN) |
+| CSV deutsch (`;` + `,` Dezimal)       | `read_csv2()`   | Excel DE, viele FVA-Exporte  |
+| Excel `.xlsx`                         | `read_excel()`  | aus readxl-Paket             |
+
+```{r csv-format-test}
+# Erste Zeile prüfen um Format zu erkennen
+readLines("../data/bestand.csv", n = 2)
+# Komma als Trennzeichen -> read_csv()
+# Semikolon als Trennzeichen -> read_csv2()
+```
+
+## Excel einlesen
+
+```{r excel-demo}
+# Excel-Datei einlesen (gleiche Daten wie bestand.csv, anderes Format)
+bestand_xl <- read_excel("../data/bestand.xlsx", sheet = "Bestand")
+glimpse(bestand_xl)
+```
+
+---
+
+# Fehlende Werte – NA
+
+`NA` = *Not Available* – der R-Standard für fehlende Daten.
+
+```{r na-erkennen}
+# Wie viele NAs pro Spalte?
+colSums(is.na(bestand))
+```
+
+```{r na-beispiel}
+# NA "steckt an" – Berechnung ergibt NA
+hoehen_mit_na <- c(24.5, NA, 31.0, NA, 18.2)
+mean(hoehen_mit_na)              # NA!
+mean(hoehen_mit_na, na.rm = TRUE) # NAs ignorieren
+```
+
+```{r na-pruefung}
+# Einzelne Werte prüfen
+is.na(hoehen_mit_na)
+```
+
+## NA-Strategien
+
+```{r na-strategien}
+# 1. Zeilen mit NA komplett entfernen (einfachste Lösung)
+bestand_clean <- na.omit(bestand)
+nrow(bestand)
+nrow(bestand_clean)
+
+# 2. NA durch Mittelwert ersetzen (Imputation)
+mw_hoehe <- mean(bestand$hoehe_m, na.rm = TRUE)
+bestand_imp <- bestand
+bestand_imp$hoehe_m[is.na(bestand_imp$hoehe_m)] <- mw_hoehe
+```
+
+> **Faustregel:** `na.omit()` nur wenn NAs zufällig fehlen und der
+> Datenverlust gering ist. Sonst Imputation oder Dokumentation.
+
+---
+
+# Funktion des Tages – `berechne_volumen()`
+
+```{r funktion-volumen}
+# Schaftvolumen (vereinfacht: Zylinder mit Formfaktor 0.5)
+berechne_volumen <- function(hoehe, bhd) {
+  round(pi * (bhd / 200)^2 * hoehe * 0.5, 3)
+}
+
+# Auf einzelne Werte anwenden
+berechne_volumen(hoehe = 24.5, bhd = 28.3)
+```
+
+```{r funktion-volumen-vektor}
+# Neue Spalte im bereinigten Datensatz berechnen
+bestand_clean$volumen_m3 <- berechne_volumen(
+  hoehe = bestand_clean$hoehe_m,
+  bhd   = bestand_clean$bhd_cm
+)
+
+summary(bestand_clean$volumen_m3)
+```
+
+> **Merksatz:** Funktionen arbeiten in R automatisch auf ganzen
+> Vektoren – kein Loop nötig. `berechne_volumen(hoehe_m, bhd_cm)`
+> berechnet für **jede Zeile** das Volumen.
+>
+> **Morgen** lernen wir mit `dplyr` einen eleganteren Weg,
+> neue Spalten zu berechnen: `mutate(volumen_m3 = berechne_volumen(hoehe_m, bhd_cm))`.
+
+---
+
+# Zusammenfassung
+
+| Aufgabe               | Funktion                                |
+|:----------------------|:----------------------------------------|
+| DF erstellen          | `data.frame(...)`                       |
+| Struktur              | `glimpse()`, `summary()`, `dim()`       |
+| Spalte ansprechen     | `df$spalte`                             |
+| Zeilen filtern        | `df[bedingung, ]` (morgen: `filter()`)  |
+| CSV einlesen          | `read_csv()`, `read_csv2()`             |
+| Excel einlesen        | `readxl::read_excel()`                  |
+| NAs erkennen          | `is.na()`, `colSums(is.na())`           |
+| NAs entfernen         | `na.omit()`                             |
+
+---
+
+> **Nächste Einheit (Block 3+4):** Eigenen Datensatz einlesen und
+> erkunden – erstes Praxisprojekt!

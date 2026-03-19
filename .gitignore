@@ -40,7 +40,18 @@ vignettes/*.pdf
 .Renviron
 
 # pkgdown site
-docs/
+# docs/  <- kept: course docs live here
+
+# renv
+renv/library/
+renv/python/
+renv/staging/
+
+# knitr output
+notebooks/*_files/
+exercises/*_files/
+solutions/*_files/
+*.nb.html
 
 # translation temp files
 po/*~

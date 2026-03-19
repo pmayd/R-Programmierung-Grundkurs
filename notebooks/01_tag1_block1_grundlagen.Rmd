@@ -1,0 +1,284 @@
+---
+title: "Tag 1 · Block 1 – Grundlagen: RStudio, Variablen & Vektoren"
+subtitle: "R Programmierung Grundkurs · FVA BW · Seminar 2552"
+date: "Juni 2026"
+output:
+  html_notebook:
+    toc: true
+    toc_float: true
+    theme: flatly
+    highlight: tango
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+---
+
+# Willkommen zum R-Grundkurs!
+
+Dieses Notebook ist euer interaktiver Begleiter. Ihr könnt Code direkt
+hier ausführen (▶ rechts im Chunk oder **Strg+Enter**), Notizen ergänzen
+und alles als HTML exportieren.
+
+**Ziel dieser Einheit** (09:00–10:30):
+
+- RStudio-Oberfläche kennenlernen
+- Variablen anlegen und zuweisen
+- Wichtige Datentypen unterscheiden
+- Mit Vektoren arbeiten
+
+---
+
+# RStudio-Oberfläche
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Editor (oben links)   │  Environment / History (oben rechts)│
+│  .R und .Rmd Dateien   │  Alle aktuellen Variablen           │
+├────────────────────────┼─────────────────────────────────────┤
+│  Console (unten links) │  Files / Plots / Help (unten rechts)│
+│  Direkte Eingabe       │  Grafiken und Hilfedokumente         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+> **Tipp:** Mit **Strg+Shift+Enter** wird der gesamte aktuelle
+> Code-Chunk ausgeführt. Mit **Strg+Enter** nur die aktuelle Zeile.
+
+## Projekt und Arbeitsverzeichnis
+
+Wir arbeiten immer in einem **RStudio-Projekt** (`.Rproj`). Dadurch
+wird das Arbeitsverzeichnis automatisch auf den Projektordner gesetzt.
+
+```{r projekt-info}
+# Aktuelles Arbeitsverzeichnis anzeigen
+getwd()
+```
+
+---
+
+# Variablen und Zuweisung
+
+In R wird mit `<-` zugewiesen (Shortcut: **Alt+–**):
+
+```{r variablen-basis}
+# Zuweisung
+baumhoehe <- 24.5
+baumart   <- "Fichte"
+ist_nadelbaum <- TRUE
+
+# Anzeigen
+baumhoehe
+baumart
+ist_nadelbaum
+```
+
+
+```{r variablen-rechnen}
+# Rechnen mit Variablen
+baumhoehe_ft <- baumhoehe * 3.281  # Meter → Fuß
+baumhoehe_ft
+```
+
+> **Hinweis:** `=` funktioniert auch, ist aber in R unüblich.
+> Wir nutzen konsequent `<-`.
+
+---
+
+# Datentypen
+
+R kennt vier Grundtypen, die uns im Kurs begegnen:
+
+```{r datentypen}
+# numeric – Kommazahlen und ganze Zahlen
+hoehe <- 24.5
+class(hoehe)
+
+# character – Text (immer in Anführungszeichen)
+art <- "Buche"
+class(art)
+
+# logical – Wahr/Falsch
+nadelholz <- FALSE
+class(nadelholz)
+
+# factor – kategorische Variable mit festen Ausprägungen
+standort <- factor("Nord", levels = c("Nord", "Sued", "Ost", "West", "Mitte"))
+class(standort)
+levels(standort)
+```
+
+```{r typ-konvertierung}
+# Typumwandlung
+alter_text <- "55"
+alter_num  <- as.numeric(alter_text)
+alter_num + 5
+```
+
+---
+
+# Vektoren
+
+Ein Vektor ist eine **geordnete Folge gleichartiger Werte** – das
+Herzstück von R.
+
+## Vektoren erstellen
+
+```{r vektor-erstellen}
+# c() = combine
+baumhoehen <- c(24.5, 18.2, 31.0, 15.8, 27.3, 22.1, 19.6, 28.8)
+baumarten  <- c("Fichte", "Kiefer", "Buche", "Fichte", "Douglasie",
+                "Tanne", "Kiefer", "Buche")
+
+length(baumhoehen)
+```
+
+## Sequenzen und Wiederholungen
+
+```{r seq-rep}
+# BHD = Brusthöhendurchmesser (Stammdurchmesser in 1,3 m Höhe, in cm)
+# Sequenz: von–bis–Schrittweite
+bhd_klassen <- seq(from = 10, to = 60, by = 10)
+bhd_klassen
+
+# Gleichmäßige Abstände (n Werte)
+messpunkte <- seq(0, 100, length.out = 6)
+messpunkte
+
+# Wiederholungen
+abteilungen <- rep(c("A", "B", "C"), times = 3)
+abteilungen
+
+rep(c("A", "B"), each = 4)
+```
+
+## Indizierung
+
+```{r indizierung}
+# Einzelner Wert (Index beginnt bei 1!)
+baumhoehen[1]
+baumhoehen[3]
+
+# Bereich
+baumhoehen[2:5]
+
+# Bedingung (logischer Index)
+baumhoehen[baumhoehen > 25]
+
+# Welche Bäume sind Buchen?
+baumarten == "Buche"
+baumhoehen[baumarten == "Buche"]
+```
+
+## Namen vergeben
+
+```{r namen}
+names(baumhoehen) <- baumarten
+baumhoehen
+
+# Zugriff über Namen: alle Fichten
+baumhoehen[names(baumhoehen) == "Fichte"]
+```
+
+---
+
+# Funktion des Tages – `quadratmeter()`
+
+Warum Funktionen? **Keine Copy-Paste-Fehler, bessere Lesbarkeit,
+einfache Wiederverwendung.**
+
+```{r funktion-grundstruktur}
+# Aufbau: name <- function(parameter) { koerper }
+quadratmeter <- function(breite, laenge) {
+  breite * laenge
+}
+
+# Aufruf
+quadratmeter(breite = 4, laenge = 6)
+quadratmeter(3.5, 8)
+```
+
+```{r funktion-auf-vektor}
+# Funktionen arbeiten vektorisiert!
+breiten <- c(4, 3.5, 6, 2.8)
+laengen <- c(6, 8,   5, 7.5)
+quadratmeter(breiten, laengen)
+```
+
+> **Merksatz:** In R kann fast jede Funktion direkt auf Vektoren
+> angewendet werden – keine Schleife nötig!
+
+---
+
+# Nützliche Vektorfunktionen
+
+```{r vektor-stats}
+baumhoehen_roh <- c(24.5, 18.2, 31.0, 15.8, 27.3, 22.1, 19.6, 28.8)
+
+min(baumhoehen_roh)
+max(baumhoehen_roh)
+mean(baumhoehen_roh)
+median(baumhoehen_roh)
+sum(baumhoehen_roh)
+length(baumhoehen_roh)
+```
+
+```{r sort-which}
+sort(baumhoehen_roh)
+sort(baumhoehen_roh, decreasing = TRUE)
+
+# Wo ist das Maximum?
+which.max(baumhoehen_roh)
+which(baumhoehen_roh > 25)
+```
+
+---
+
+# Text zusammensetzen – `paste()` und `paste0()`
+
+`paste()` verbindet Werte zu einem Text – unentbehrlich für
+lesbare Ausgaben und Beschriftungen:
+
+```{r paste}
+art    <- "Fichte"
+anzahl <- 28
+
+# paste() fügt ein Leerzeichen ein
+paste("Baumart:", art, "| Anzahl:", anzahl)
+
+# paste0() ohne Trennzeichen (0 Leerzeichen)
+paste0("Bericht_", art, ".csv")
+
+# Auf Vektoren anwenden
+baumarten_liste <- c("Fichte", "Buche", "Kiefer")
+paste("Art:", baumarten_liste)          # Vektor
+paste(baumarten_liste, collapse = ", ") # zu einem String
+```
+
+> **Tipp:** `paste0("text", wert)` ist kürzer als
+> `paste("text", wert, sep = "")`.
+
+---
+
+# Zusammenfassung
+
+| Konzept         | Funktion/Syntax                        |
+|:----------------|:---------------------------------------|
+| Zuweisung       | `x <- wert`                            |
+| Typ prüfen      | `class(x)`                             |
+| Vektor erstellen| `c()`, `seq()`, `rep()`                |
+| Indizieren      | `x[1]`, `x[x > 10]`                   |
+| Namen           | `names(x) <- ...`                      |
+| Text bauen      | `paste()`, `paste0()`                  |
+| Eigene Funktion | `f <- function(a, b) { ... }`          |
+
+---
+
+> **Nächste Einheit (Block 2):** Data Frames – Tabellen mit mehreren
+> Spalten einlesen und inspizieren.

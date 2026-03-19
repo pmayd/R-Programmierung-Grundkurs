@@ -1,0 +1,244 @@
+---
+title: "Tag 1 · Einführung – Pakete, Funktionen & die R-Session"
+subtitle: "R Programmierung Grundkurs · FVA BW · Seminar 2552"
+date: "Juni 2026"
+output:
+  html_notebook:
+    toc: true
+    toc_float: true
+    theme: flatly
+    highlight: tango
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+---
+
+# Was ist ein R-Paket?
+
+R enthält von Haus aus viele nützliche Funktionen – das sogenannte **Base R**.
+Darüber hinaus gibt es tausende Erweiterungspakete, die von der Community
+entwickelt wurden.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Base R (immer verfügbar)                                       │
+│  mean(), sum(), c(), data.frame(), read.csv(), …                │
+├─────────────────────────────────────────────────────────────────┤
+│  Pakete (müssen geladen werden)                                 │
+│  readr::read_csv()   dplyr::filter()   ggplot2::ggplot()       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Zwei Schritte** sind nötig, bevor man ein Paket nutzen kann:
+
+| Schritt | Befehl | Wann? |
+|:--------|:-------|:------|
+| 1. Installieren | `install.packages("dplyr")` | Einmalig pro Rechner |
+| 2. Laden | `library(dplyr)` | Einmal pro R-Session |
+
+> **Analogie:** Installieren = Buch ins Regal stellen.
+> Laden = Buch aufschlagen und auf dem Tisch legen.
+
+---
+
+# Base R – immer verfügbar
+
+Diese Funktionen sind **ohne `library()`** sofort nutzbar:
+
+```{r base-r}
+# Arithmetik und Vektoren
+hoehen <- c(18.5, 24.3, 31.0, 21.7)
+
+mean(hoehen)
+sum(hoehen)
+length(hoehen)
+sqrt(16)
+```
+
+```{r base-r-df}
+# Data Frames erstellen und filtern
+baeume <- data.frame(
+  art    = c("Fichte", "Buche", "Kiefer"),
+  hoehe  = c(24.5, 28.0, 18.5)
+)
+
+baeume[baeume$hoehe > 20, ]
+```
+
+All diese Funktionen kommen aus dem Paket **base**, das R automatisch
+beim Start lädt. Ihr müsst nichts tun.
+
+---
+
+# Pakete laden – `library()`
+
+Sobald ihr ein Paket *laden* wollt, ruft ihr `library()` einmal auf.
+Danach stehen **alle** Funktionen des Pakets direkt zur Verfügung:
+
+```{r library-demo}
+library(dplyr)
+
+# filter() kommt aus dplyr – ohne library() würde das nicht funktionieren
+filter(baeume, hoehe > 20)
+```
+
+```{r library-readr}
+library(readr)
+
+# read_csv() kommt aus readr
+bestand <- read_csv("../data/bestand.csv")
+nrow(bestand)
+```
+
+> **Wichtig:** `library()` lädt das Paket für die **aktuelle Session**.
+> Schließt ihr RStudio und öffnet es neu, müsst ihr `library()` erneut aufrufen.
+
+---
+
+# Die R-Session – warum "funktioniert das einfach"?
+
+Ihr habt vielleicht bemerkt: Nach dem ersten Ausführen eines Notebooks
+scheinen Pakete *automatisch* geladen zu sein – auch wenn ihr den
+`library()`-Chunk übersprungen habt.
+
+**Warum?** Weil die R-Session weiterläuft, bis ihr sie explizit beendet.
+
+```
+Zeitlinie einer RStudio-Session:
+─────────────────────────────────────────────────────────────────►
+Start     Notebook      library()    Chunk 5     Chunk 5
+RStudio   geöffnet      aufgerufen   dplyr ✓     dplyr ✓
+                        → dplyr im   (weil noch  (immer noch
+                          Speicher     geladen)    geladen!)
+```
+
+Das ist **praktisch**, aber auch eine **Fehlerquelle**:
+
+- Wenn ihr RStudio neu startet und nur Chunk 5 ausführt → Fehler!
+- Wenn ein Kollege euer Notebook ausführt → Fehler, falls `library()`-Chunk fehlt!
+
+> **Lösung:** Der `setup`-Chunk am Anfang jedes Notebooks lädt alle
+> benötigten Pakete verlässlich – und das mit `include=FALSE`, damit
+> die Ausgabe im gerenderten Dokument nicht erscheint.
+
+---
+
+# Der Setup-Chunk – das Fundament jedes Notebooks
+
+Jedes unserer Notebooks beginnt mit diesem Block:
+
+````
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(dplyr)
+library(ggplot2)
+library(readr)
+```
+````
+
+Was passiert hier?
+
+| Zeile | Bedeutung |
+|:------|:----------|
+| `knitr::opts_chunk$set(...)` | Globale Chunk-Einstellungen: Code zeigen, keine Meldungen |
+| `library(dplyr)` | dplyr für diese Session laden |
+| `include=FALSE` | Chunk wird *ausgeführt*, aber nicht im Output angezeigt |
+
+**`include=FALSE` ≠ nicht ausgeführt!** Der Chunk läuft immer – er ist
+nur unsichtbar im Ergebnis. Das ist der häufigste Irrtum bei Anfängern.
+
+---
+
+# Die `::` Schreibweise – explizit ohne Laden
+
+Manchmal will man eine Funktion aus einem Paket nur *einmal* nutzen,
+ohne das ganze Paket zu laden. Dafür gibt es `paket::funktion()`:
+
+```{r doppelpunkt}
+# read_excel() aus readxl nutzen, ohne library(readxl) aufzurufen
+# bestand_xl <- readxl::read_excel("../data/bestand.xlsx")
+```
+
+Wann ist `::` sinnvoll?
+
+- **Eindeutigkeit:** Zwei Pakete haben eine Funktion mit gleichem Namen
+  (z. B. `dplyr::filter()` vs. `stats::filter()`)
+- **Einmaliger Einsatz:** Nur an einer Stelle im Code benötigt
+- **Dokumentation:** Im Code sofort sichtbar, woher eine Funktion kommt
+
+```{r konflikt-beispiel}
+# stats::filter() ist die Base-R-Zeitreihenfilterung
+# dplyr::filter() filtert Zeilen eines Data Frames
+# Nach library(dplyr) "gewinnt" dplyr – Base R wird maskiert
+
+# Explizit Base R nutzen, obwohl dplyr geladen ist:
+# stats::filter(hoehen, rep(1/3, 3))  # gleitender Durchschnitt
+```
+
+> **Im Kurs:** Wir laden unsere Pakete immer mit `library()` im
+> Setup-Chunk. Die `::` Schreibweise verwendet ihr hauptsächlich bei
+> `readxl::read_excel()`, weil readxl Teil von tidyverse ist,
+> aber nicht automatisch mitgeladen wird.
+
+---
+
+# Pakete im Kurs – Übersicht
+
+In diesem Kurs arbeiten wir mit folgenden Paketen:
+
+```{r pakete-uebersicht, eval=FALSE}
+# Diese Pakete sind bereits installiert (renv kümmert sich darum)
+library(readr)    # CSV/TSV einlesen (read_csv, read_csv2)
+library(readxl)   # Excel-Dateien einlesen (read_excel)
+library(dplyr)    # Daten transformieren (filter, mutate, group_by, …)
+library(ggplot2)  # Visualisierung (ggplot, geom_point, …)
+```
+
+Alle vier sind Teil des **tidyverse** – einer Sammlung aufeinander
+abgestimmter Pakete für moderne Datenanalyse in R.
+
+---
+
+# renv – reproduzierbare Paketversionen
+
+Damit alle im Kurs **exakt dieselben Paketversionen** verwenden,
+nutzen wir `renv`:
+
+```{r renv-info, eval=FALSE}
+# Beim ersten Öffnen des Projekts:
+renv::restore()  # installiert alle Pakete aus renv.lock
+
+# Nach dem Kurs, wenn ihr neue Pakete hinzufügt:
+renv::snapshot() # aktualisiert renv.lock
+```
+
+`renv` liest die Datei `renv.lock` im Projektordner und stellt sicher,
+dass jeder dieselbe Umgebung hat. Ihr müsst `renv::restore()` nur einmal
+beim ersten Öffnen des Projekts aufrufen – danach ist alles eingerichtet.
+
+---
+
+# Zusammenfassung
+
+| Konzept | Erklärung |
+|:--------|:----------|
+| Base R | Immer verfügbar, kein `library()` nötig |
+| `install.packages()` | Einmalig: Paket auf den Rechner laden |
+| `library()` | Pro Session: Paket aktivieren |
+| `paket::funktion()` | Funktion explizit ansprechen, ohne das Paket zu laden |
+| Setup-Chunk | Läuft immer, lädt alle Pakete – auch wenn `include=FALSE` |
+| R-Session | Bleibt aktiv bis zum Neustart – geladene Pakete bleiben geladen |
+| `renv` | Sorgt dafür, dass alle dieselben Paketversionen nutzen |
+
+---
+
+> **Nächste Einheit (Block 1):** Variablen, Datentypen und Vektoren –
+> die Grundbausteine von R.

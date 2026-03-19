@@ -1,0 +1,463 @@
+---
+title: "Musterlösungen Tag 3 – Statistik, Schleifen & Abschlussprojekt"
+subtitle: "R Programmierung Grundkurs · FVA BW · Seminar 2552"
+date: "Juni 2026"
+output:
+  html_notebook:
+    toc: true
+    toc_float: true
+    theme: flatly
+    highlight: tango
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo       = TRUE,
+  message    = FALSE,
+  warning    = FALSE,
+  fig.width  = 7,
+  fig.height = 4.5
+)
+library(dplyr)
+library(ggplot2)
+library(readr)
+```
+
+```{r daten, include=FALSE}
+bestand <- read_csv("../data/bestand.csv") |> na.omit()
+bestand <- bestand |>
+  mutate(volumen_m3 = round(pi * (bhd_cm / 200)^2 * hoehe_m * 0.5, 3))
+```
+
+> **Hinweis für Kursleitende:** Musterlösungen zu `exercises/uebungen_tag3.Rmd`.
+
+---
+
+# Block 1 – Deskriptive Statistik & Tests
+
+## Aufgabe 1.1 – Lagemaße und Streuung
+
+```{r a1-1}
+# a) Lagemaße
+mean(bestand$bhd_cm)
+median(bestand$bhd_cm)
+quantile(bestand$bhd_cm, probs = c(0.25, 0.75))
+
+# b) Streuungsmaße
+sd(bestand$bhd_cm)
+sd(bestand$bhd_cm) / mean(bestand$bhd_cm) * 100  # Variationskoeffizient in %
+
+# c) Übersichtstabelle je Baumart
+bestand |>
+  group_by(baumart) |>
+  summarise(
+    n      = n(),
+    mean   = round(mean(bhd_cm), 1),
+    median = round(median(bhd_cm), 1),
+    q25    = round(quantile(bhd_cm, 0.25), 1),
+    q75    = round(quantile(bhd_cm, 0.75), 1),
+    sd     = round(sd(bhd_cm), 1),
+    cv     = round(sd(bhd_cm) / mean(bhd_cm) * 100, 1),
+    .groups = "drop"
+  )
+```
+
+## Aufgabe 1.2 – Häufigkeitstabellen
+
+```{r a1-2}
+# a) Absolute und relative Häufigkeit
+abs_haeufigkeit <- table(bestand$baumart)
+abs_haeufigkeit
+prop.table(abs_haeufigkeit)
+
+# b) Kreuztabelle baumart x standort
+kreuztab <- table(bestand$baumart, bestand$standort)
+kreuztab
+
+# c) Häufigste Kombination
+df_kreuz <- as.data.frame(kreuztab)
+names(df_kreuz) <- c("baumart", "standort", "n")
+df_kreuz[which.max(df_kreuz$n), ]
+```
+
+## Aufgabe 1.3 – Normalverteilung prüfen
+
+```{r a1-3a}
+# a) Shapiro-Wilk-Test für Fichten und Buchen
+hoehen_fichte <- bestand$hoehe_m[bestand$baumart == "Fichte"]
+hoehen_buche  <- bestand$hoehe_m[bestand$baumart == "Buche"]
+
+shapiro.test(hoehen_fichte)
+shapiro.test(hoehen_buche)
+# Interpretation: p > 0.05 -> kein signifikanter Abweichung von Normalverteilung
+```
+
+```{r a1-3b}
+# b) QQ-Plot Fichten
+ggplot(data.frame(x = hoehen_fichte), aes(sample = x)) +
+  stat_qq() +
+  stat_qq_line(color = "red") +
+  labs(
+    title = "QQ-Plot: Höhen der Fichten",
+    x     = "Theoretische Quantile",
+    y     = "Stichproben-Quantile"
+  ) +
+  theme_bw()
+```
+
+```{r a1-3c}
+# b) QQ-Plot Buchen
+ggplot(data.frame(x = hoehen_buche), aes(sample = x)) +
+  stat_qq() +
+  stat_qq_line(color = "darkgreen") +
+  labs(
+    title = "QQ-Plot: Höhen der Buchen",
+    x     = "Theoretische Quantile",
+    y     = "Stichproben-Quantile"
+  ) +
+  theme_bw()
+
+# c) Interpretation:
+# Punkte liegen nahe der Referenzlinie -> die Höhen sind annähernd normalverteilt.
+# Der Shapiro-Wilk-Test bestätigt dies (p > 0.05 -> H0 nicht abgelehnt).
+```
+
+## Aufgabe 1.4 – t-Test
+
+```{r a1-4}
+# a) Zweiseitiger t-Test: Höhen Fichte vs. Buche
+ttest <- t.test(hoehen_fichte, hoehen_buche)
+ttest
+
+# b) p-Wert und 95%-Konfidenzintervall auslesen
+ttest$p.value
+ttest$conf.int
+
+# c) Schlussfolgerung:
+# p < 0.05 -> Der Unterschied in den mittleren Höhen ist statistisch signifikant.
+# Das 95%-KI enthält nicht die 0, was den Unterschied bestätigt.
+# Fichten und Buchen unterscheiden sich in ihrer mittleren Höhe im Bestand.
+```
+
+## Aufgabe 1.5 – Lineare Regression
+
+```{r a1-5}
+# a) Lineares Modell
+modell <- lm(hoehe_m ~ bhd_cm, data = bestand)
+summary(modell)
+
+# b) R²
+summary(modell)$r.squared
+# Interpretation: R² gibt den Anteil der durch bhd_cm erklärten Varianz in
+# der Höhe an. Ein R² von z.B. 0.65 bedeutet: 65% der Höhenvariabilität
+# wird durch den BHD erklärt.
+
+# c) Vorhersage für BHD = 35 cm
+predict(modell, newdata = data.frame(bhd_cm = 35))
+
+# d) Regressionslinie im Scatterplot
+ggplot(bestand, aes(x = bhd_cm, y = hoehe_m)) +
+  geom_point(alpha = 0.3, size = 1.5, color = "steelblue") +
+  geom_smooth(method = "lm", color = "red", se = TRUE) +
+  labs(
+    title = "Lineare Regression: Höhe ~ BHD",
+    x     = "BHD (cm)",
+    y     = "Höhe (m)"
+  ) +
+  theme_bw()
+```
+
+---
+
+# Block 2 – Schleifen & Apply
+
+## Aufgabe 2.1 – for-Schleife
+
+```{r a2-1}
+baumarten <- unique(bestand$baumart)
+
+for (art in baumarten) {
+  teilmenge <- bestand[bestand$baumart == art, ]
+  cat(
+    sprintf(
+      "=== %s ===\nn: %d  |  Mittl. Höhe: %.1f m  |  Max. BHD: %.1f cm\n\n",
+      art,
+      nrow(teilmenge),
+      mean(teilmenge$hoehe_m),
+      max(teilmenge$bhd_cm)
+    )
+  )
+}
+```
+
+## Aufgabe 2.2 – sapply()
+
+```{r a2-2}
+anzahl_je_art <- sapply(
+  unique(bestand$baumart),
+  function(art) sum(bestand$baumart == art)
+)
+anzahl_je_art
+```
+
+## Aufgabe 2.3 – lapply() mit Data Frames
+
+```{r a2-3}
+kennzahlen_liste <- lapply(unique(bestand$baumart), function(art) {
+  teil <- bestand[bestand$baumart == art, ]
+  data.frame(
+    baumart  = art,
+    n        = nrow(teil),
+    mw_hoehe = round(mean(teil$hoehe_m), 1),
+    mw_bhd   = round(mean(teil$bhd_cm), 1)
+  )
+})
+
+kennzahlen_df <- bind_rows(kennzahlen_liste)
+kennzahlen_df
+```
+
+## Aufgabe 2.4 – Mehrere Dateien einlesen
+
+```{r a2-4}
+# a) + b) Alle CSV-Dateien einlesen und kombinieren
+csv_dateien <- list.files("../data", pattern = "\\.csv$", full.names = TRUE)
+
+alle_daten <- bind_rows(lapply(csv_dateien, function(pfad) {
+  df <- read_csv(pfad, show_col_types = FALSE)
+  df$quelle <- basename(pfad)
+  df
+}))
+
+# c) Gesamtanzahl Zeilen
+nrow(alle_daten)
+
+# d) Mittlere Höhe je Quelle
+alle_daten |>
+  filter(!is.na(hoehe_m)) |>
+  group_by(quelle) |>
+  summarise(mw_hoehe = round(mean(hoehe_m), 1), n = n(), .groups = "drop")
+```
+
+## Aufgabe 2.5 – Robuste Funktion mit tryCatch
+
+```{r a2-5}
+lese_bestand <- function(pfad) {
+  tryCatch(
+    {
+      df <- read_csv(pfad, show_col_types = FALSE)
+      df <- na.omit(df)
+      df
+    },
+    error = function(e) {
+      warning(paste("Fehler beim Einlesen von", pfad, ":", conditionMessage(e)))
+      NULL
+    }
+  )
+}
+
+# Tests
+result_ok <- lese_bestand("../data/bestand.csv")
+nrow(result_ok)
+
+result_err <- lese_bestand("../data/existiert_nicht.csv")
+is.null(result_err)
+```
+
+---
+
+# Abschlussprojekt
+
+```{r projekt-1}
+# 1. Daten einlesen und bereinigen
+bestand_proj <- read_csv("../data/bestand.csv", show_col_types = FALSE)
+cat("Zeilen vor Bereinigung:", nrow(bestand_proj), "\n")
+
+bestand_proj <- bestand_proj |>
+  na.omit() |>
+  mutate(
+    volumen_m3     = round(pi * (bhd_cm / 200)^2 * hoehe_m * 0.5, 3),
+    hd_verhaeltnis = round((hoehe_m * 100) / bhd_cm, 1),
+    hd_klasse      = ifelse(hd_verhaeltnis > 80, "schlank", "stabil")
+  )
+
+cat("Zeilen nach Bereinigung:", nrow(bestand_proj), "\n")
+glimpse(bestand_proj)
+```
+
+```{r projekt-2}
+# 2. Explorative Analyse
+# Bestandsübersicht je Baumart und Standort
+uebersicht <- bestand_proj |>
+  group_by(baumart, standort) |>
+  summarise(
+    n              = n(),
+    mw_hoehe       = round(mean(hoehe_m), 1),
+    mw_bhd         = round(mean(bhd_cm), 1),
+    total_volumen  = round(sum(volumen_m3), 2),
+    anteil_schlank = round(mean(hd_klasse == "schlank") * 100, 1),
+    .groups        = "drop"
+  ) |>
+  arrange(desc(total_volumen))
+
+print(uebersicht, n = 20)
+```
+
+```{r projekt-3}
+# 3. Visualisierungen
+
+# Grafik 1: Gesamtvolumen je Baumart und Standort
+bestand_proj |>
+  group_by(baumart, standort) |>
+  summarise(total_volumen = sum(volumen_m3), .groups = "drop") |>
+  ggplot(aes(x = reorder(baumart, total_volumen), y = total_volumen,
+             fill = standort)) +
+  geom_col() +
+  coord_flip() +
+  labs(
+    title = "Gesamtvolumen je Baumart und Standort",
+    x     = "Baumart",
+    y     = "Gesamtvolumen (m³)",
+    fill  = "Standort"
+  ) +
+  theme_bw()
+
+# Grafik 2: BHD vs. Höhe nach Schlankheitsgrad
+ggplot(bestand_proj, aes(x = bhd_cm, y = hoehe_m, color = hd_klasse)) +
+  geom_point(alpha = 0.4, size = 1.5) +
+  facet_wrap(~baumart) +
+  scale_color_manual(values = c("schlank" = "#e74c3c", "stabil" = "#2ecc71")) +
+  labs(
+    title  = "Höhe vs. BHD nach Schlankheitsgrad",
+    x      = "BHD (cm)",
+    y      = "Höhe (m)",
+    color  = "H/D-Klasse"
+  ) +
+  theme_bw()
+```
+
+```{r projekt-4}
+# 4. Statistischer Test: Unterscheidet sich das Volumen zwischen Standorten?
+# Einfaktorielle ANOVA
+anova_result <- aov(volumen_m3 ~ standort, data = bestand_proj)
+summary(anova_result)
+
+# Interpretation:
+# p < 0.05 -> mindestens ein Standort unterscheidet sich signifikant
+# Wenn nicht signifikant: kein belastbarer Volumenunterschied zwischen Standorten
+```
+
+```{r projekt-5}
+# 5. Automatisierung mit lapply
+# Volumenstatistik je Baumart automatisch berechnen
+vol_stats <- lapply(unique(bestand_proj$baumart), function(art) {
+  teil <- filter(bestand_proj, baumart == art)
+  data.frame(
+    baumart       = art,
+    n             = nrow(teil),
+    mw_vol        = round(mean(teil$volumen_m3), 3),
+    total_vol     = round(sum(teil$volumen_m3), 2),
+    mw_alter      = round(mean(teil$alter_jahre), 0)
+  )
+})
+
+bind_rows(vol_stats) |> arrange(desc(total_vol))
+```
+
+```{r projekt-6}
+# 6. Eigene Funktionen
+
+# Funktion 1: Bestandskennzahlen für eine Baumart
+kennzahlen_art <- function(df, art) {
+  teil <- filter(df, baumart == art)
+  if (nrow(teil) == 0) {
+    warning(paste("Keine Daten für Baumart:", art))
+    return(NULL)
+  }
+  list(
+    baumart     = art,
+    n           = nrow(teil),
+    mw_hoehe    = round(mean(teil$hoehe_m), 1),
+    mw_bhd      = round(mean(teil$bhd_cm), 1),
+    mw_volumen  = round(mean(teil$volumen_m3), 3),
+    mw_alter    = round(mean(teil$alter_jahre), 0)
+  )
+}
+
+kennzahlen_art(bestand_proj, "Fichte")
+
+# Funktion 2: Vergleichsplot zweier Baumarten
+vergleich_plot <- function(df, art1, art2, variable = "hoehe_m") {
+  df |>
+    filter(baumart %in% c(art1, art2)) |>
+    ggplot(aes(x = baumart, y = .data[[variable]], fill = baumart)) +
+    geom_boxplot(show.legend = FALSE) +
+    labs(
+      title = paste("Vergleich:", art1, "vs.", art2),
+      x     = "Baumart",
+      y     = variable
+    ) +
+    theme_bw()
+}
+
+vergleich_plot(bestand_proj, "Fichte", "Buche", "hoehe_m")
+vergleich_plot(bestand_proj, "Kiefer", "Douglasie", "bhd_cm")
+```
+
+---
+
+# Bonusaufgabe
+
+```{r bonus}
+erstelle_bericht <- function(df, art, speichern = FALSE,
+                             ausgabe_pfad = "outputs/") {
+  # Daten filtern
+  teil <- filter(df, baumart == art)
+  if (nrow(teil) == 0) {
+    warning(paste("Keine Daten für Baumart:", art))
+    return(invisible(NULL))
+  }
+
+  # Kennzahlen ausgeben
+  cat(sprintf(
+    "\n========== Bericht: %s ==========\n",
+    art
+  ))
+  cat(sprintf("Anzahl Bäume:     %d\n", nrow(teil)))
+  cat(sprintf("Mittl. Höhe:      %.1f m (SD: %.1f)\n",
+              mean(teil$hoehe_m), sd(teil$hoehe_m)))
+  cat(sprintf("Mittl. BHD:       %.1f cm (SD: %.1f)\n",
+              mean(teil$bhd_cm), sd(teil$bhd_cm)))
+  cat(sprintf("Mittl. Volumen:   %.3f m³\n", mean(teil$volumen_m3)))
+  cat(sprintf("Gesamtvolumen:    %.2f m³\n", sum(teil$volumen_m3)))
+  cat(sprintf("Mittl. Alter:     %.0f Jahre\n\n", mean(teil$alter_jahre)))
+
+  # Plot erstellen
+  p <- ggplot(teil, aes(x = bhd_cm, y = hoehe_m)) +
+    geom_point(alpha = 0.5, color = "forestgreen", size = 2) +
+    geom_smooth(method = "lm", color = "red", se = TRUE) +
+    labs(
+      title    = paste("Höhe vs. BHD –", art),
+      subtitle = sprintf("n = %d  |  Mittl. Volumen: %.3f m³",
+                         nrow(teil), mean(teil$volumen_m3)),
+      x        = "BHD (cm)",
+      y        = "Höhe (m)"
+    ) +
+    theme_bw()
+
+  # Optional speichern
+  if (speichern) {
+    dir.create(ausgabe_pfad, showWarnings = FALSE, recursive = TRUE)
+    dateiname <- paste0(ausgabe_pfad, "bericht_", tolower(art), ".png")
+    ggsave(dateiname, plot = p, width = 7, height = 4.5, dpi = 150)
+    cat(sprintf("Plot gespeichert: %s\n", dateiname))
+  }
+
+  print(p)
+  invisible(p)
+}
+
+# Test
+erstelle_bericht(bestand_proj, "Fichte")
+```

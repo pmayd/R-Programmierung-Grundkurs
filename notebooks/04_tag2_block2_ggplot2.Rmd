@@ -1,0 +1,273 @@
+---
+title: "Tag 2 · Block 2 – Visualisierung mit ggplot2"
+subtitle: "R Programmierung Grundkurs · FVA BW · Seminar 2552"
+date: "Juni 2026"
+output:
+  html_notebook:
+    toc: true
+    toc_float: true
+    theme: flatly
+    highlight: tango
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width  = 7,
+  fig.height = 4.5
+)
+library(dplyr)
+library(ggplot2)
+library(readr)
+```
+
+```{r daten-laden, include=FALSE}
+bestand <- read_csv("../data/bestand.csv") |> na.omit()
+bestand <- bestand |>
+  mutate(volumen_m3 = round(pi * (bhd_cm / 200)^2 * hoehe_m * 0.5, 3))
+```
+
+---
+
+# Die Grammar of Graphics
+
+ggplot2 baut Grafiken aus **Schichten** (*layers*):
+
+```
+ggplot(data = ..., aes(x = ..., y = ...))   # Koordinatensystem
+  + geom_*()                                  # Geometrie (Punkte, Balken …)
+  + labs()                                    # Beschriftungen
+  + theme_*()                                 # Optik
+```
+
+**Jede neue Schicht wird mit `+` hinzugefügt.**
+
+---
+
+# Erster Plot – Scatterplot
+
+```{r scatter-basis}
+ggplot(data = bestand, aes(x = bhd_cm, y = hoehe_m)) +
+  geom_point()
+```
+
+```{r scatter-farbe}
+# Farbe und Transparenz nach Baumart
+ggplot(bestand, aes(x = bhd_cm, y = hoehe_m, colour = baumart)) +
+  geom_point(alpha = 0.6, size = 2) +
+  labs(
+    title   = "Höhe vs. BHD nach Baumart",
+    x       = "Brusthöhendurchmesser (cm)",
+    y       = "Baumhöhe (m)",
+    colour  = "Baumart"
+  ) +
+  theme_bw()
+```
+
+```{r scatter-regression}
+# Regressionslinie hinzufügen
+ggplot(bestand, aes(x = bhd_cm, y = hoehe_m)) +
+  geom_point(aes(colour = baumart), alpha = 0.5) +
+  geom_smooth(method = "lm", se = TRUE, colour = "black", linewidth = 1) +
+  labs(
+    title  = "Höhe ~ BHD mit Regressionslinie",
+    x      = "BHD (cm)", y = "Höhe (m)"
+  ) +
+  theme_bw()
+```
+
+---
+
+# Boxplot – Verteilungen vergleichen
+
+```{r boxplot}
+ggplot(bestand, aes(x = baumart, y = hoehe_m, fill = baumart)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = 21) +
+  labs(
+    title = "Höhenverteilung je Baumart",
+    x     = "Baumart",
+    y     = "Baumhöhe (m)"
+  ) +
+  theme_bw() +
+  theme(legend.position = "none")  # Legende unnötig (Achse erklärt schon)
+```
+
+```{r boxplot-flip}
+# Horizontaler Boxplot – besser bei vielen Kategorien
+ggplot(bestand, aes(x = reorder(baumart, hoehe_m, median),
+                    y = hoehe_m, fill = baumart)) +
+  geom_boxplot(alpha = 0.7) +
+  coord_flip() +
+  labs(title = "Höhenverteilung (nach Median sortiert)",
+       x = NULL, y = "Baumhöhe (m)") +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+---
+
+# Histogramm – Häufigkeitsverteilung
+
+```{r histogram}
+ggplot(bestand, aes(x = hoehe_m)) +
+  geom_histogram(binwidth = 3, fill = "steelblue", colour = "white") +
+  labs(
+    title = "Häufigkeitsverteilung der Baumhöhen",
+    x     = "Baumhöhe (m)",
+    y     = "Anzahl Bäume"
+  ) +
+  theme_bw()
+```
+
+```{r histogram-facet}
+# Eigene Grafik je Baumart – facet_wrap!
+bestand |>
+  filter(baumart %in% c("Fichte", "Buche", "Kiefer", "Douglasie")) |>
+  ggplot(aes(x = hoehe_m, fill = baumart)) +
+  geom_histogram(binwidth = 3, colour = "white", show.legend = FALSE) +
+  facet_wrap(~baumart, nrow = 2) +
+  labs(title = "Höhenverteilung je Baumart",
+       x = "Höhe (m)", y = "Anzahl") +
+  theme_bw()
+```
+
+---
+
+# Balkendiagramm – Häufigkeiten und Kennzahlen
+
+```{r barplot-counts}
+# geom_bar() zählt Zeilen automatisch
+ggplot(bestand, aes(x = baumart, fill = baumart)) +
+  geom_bar(show.legend = FALSE) +
+  labs(
+    title = "Stammzahl je Baumart",
+    x     = NULL,
+    y     = "Anzahl Bäume"
+  ) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+```
+
+```{r barplot-kennzahlen}
+# geom_col() zeichnet vorberechnete Werte
+mw_hoehe <- bestand |>
+  group_by(baumart) |>
+  summarise(mittl_hoehe = round(mean(hoehe_m), 1), .groups = "drop")
+
+ggplot(mw_hoehe, aes(x = reorder(baumart, mittl_hoehe), y = mittl_hoehe,
+                     fill = baumart)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = mittl_hoehe), hjust = -0.2, size = 3.5) +
+  coord_flip() +
+  labs(
+    title = "Mittlere Baumhöhe je Baumart",
+    x     = NULL,
+    y     = "Mittlere Höhe (m)"
+  ) +
+  theme_bw()
+```
+
+> **Faustregel:**
+> `geom_bar()` zählt Zeilen selbst → für rohe Daten.
+> `geom_col()` zeichnet vorberechnete Werte → nach `summarise()`.
+
+---
+
+# Beschriftungen und Themes
+
+```{r themes-vergleich}
+p <- ggplot(bestand, aes(x = bhd_cm, y = hoehe_m, colour = baumart)) +
+  geom_point(alpha = 0.5) +
+  labs(x = "BHD (cm)", y = "Höhe (m)", colour = "Baumart")
+
+p + theme_bw()        # empfohlen für Publikationen
+```
+
+```{r achsen-skalierung}
+# Achsen formatieren
+ggplot(bestand, aes(x = bhd_cm, y = hoehe_m, colour = baumart)) +
+  geom_point(alpha = 0.5, size = 1.5) +
+  scale_x_continuous(breaks = seq(10, 70, by = 10)) +
+  scale_y_continuous(limits = c(0, 40)) +
+  scale_colour_brewer(palette = "Set2") +
+  labs(
+    title   = "Bestandsaufnahme FVA BW",
+    caption = "Simulierte Daten · Seminar 2552",
+    x       = "BHD (cm)", y = "Höhe (m)", colour = "Baumart"
+  ) +
+  theme_bw(base_size = 12)
+```
+
+---
+
+# Grafiken speichern
+
+```{r ggsave, eval=FALSE}
+# Letzten Plot als PNG speichern
+ggsave(
+  filename = "outputs/hoehenverteilung.png",
+  width    = 18,
+  height   = 12,
+  units    = "cm",
+  dpi      = 300
+)
+
+# Als PDF (Vektorgrafik – ideal für Publikationen)
+ggsave("outputs/scatter_hoehe_bhd.pdf", width = 18, height = 12, units = "cm")
+```
+
+> **Tipp:** `ggsave()` speichert immer den **letzten** `ggplot()`.
+> Wer einen bestimmten Plot speichern will, kann ihn einer
+> Variable zuweisen: `p <- ggplot(...); ggsave("out.png", plot = p)`.
+
+---
+
+# Funktion des Tages – `plot_hoehenverteilung()`
+
+```{r funktion-plot}
+plot_hoehenverteilung <- function(df, gruppe = "baumart") {
+  stopifnot(gruppe %in% names(df))
+
+  ggplot(df, aes(x = .data[[gruppe]], y = hoehe_m, fill = .data[[gruppe]])) +
+    geom_boxplot(alpha = 0.7, outlier.shape = 21, show.legend = FALSE) +
+    labs(
+      title = paste("Höhenverteilung nach", gruppe),
+      x     = gruppe,
+      y     = "Baumhöhe (m)"
+    ) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1))
+}
+
+plot_hoehenverteilung(bestand, "baumart")
+```
+
+```{r funktion-plot-standort}
+plot_hoehenverteilung(bestand, "standort")
+```
+
+> `.data[[gruppe]]` ist ein sicherer Weg, eine **Spalte über ihren
+> Namen als Variable** in ggplot2 anzusprechen (tidy evaluation).
+
+---
+
+# Zusammenfassung
+
+| Geom                | Wann?                                      |
+|:--------------------|:-------------------------------------------|
+| `geom_point()`      | Zusammenhang zweier metrischer Variablen   |
+| `geom_smooth()`     | Trend-/Regressionslinie einfügen           |
+| `geom_boxplot()`    | Verteilung je Gruppe vergleichen           |
+| `geom_histogram()`  | Häufigkeitsverteilung einer Variable       |
+| `geom_bar()`        | Kategorien zählen (rohe Daten)             |
+| `geom_col()`        | Kategorien mit vorberechneten Werten       |
+| `facet_wrap()`      | Eigene Grafik je Gruppe                    |
+| `ggsave()`          | Grafik als PNG/PDF speichern               |
+
+---
+
+> **Nachmittag (Block 3+4):** Komplette Auswertung mit dplyr +
+> ggplot2 im eigenen Datensatz.

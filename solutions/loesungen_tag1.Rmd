@@ -1,0 +1,212 @@
+---
+title: "Musterlösungen Tag 1 – Grundlagen, Vektoren & Data Frames"
+subtitle: "R Programmierung Grundkurs · FVA BW · Seminar 2552"
+date: "Juni 2026"
+output:
+  html_notebook:
+    toc: true
+    toc_float: true
+    theme: flatly
+    highlight: tango
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+> **Hinweis für Kursleitende:** Diese Datei enthält vollständige Musterlösungen
+> zu allen Aufgaben in `exercises/uebungen_tag1.Rmd`.
+
+---
+
+# Block 1 – Vektoren und erste Funktionen
+
+## Aufgabe 1.1 – Baumhöhen-Vektor
+
+```{r a1-1}
+baumhoehen <- c(18.5, 24.0, 31.2, 15.8, 27.6, 22.3, 19.1, 28.9, 33.4, 16.7)
+baumhoehen
+```
+
+## Aufgabe 1.2 – Grundlegende Operationen
+
+```{r a1-2}
+# a) min, max, mean
+min(baumhoehen)
+max(baumhoehen)
+mean(baumhoehen)
+
+# b) Anzahl Bäume > 25 m
+sum(baumhoehen > 25)
+
+# c) Sortieren (groß nach klein)
+sort(baumhoehen, decreasing = TRUE)
+```
+
+## Aufgabe 1.3 – Sequenzen
+
+```{r a1-3}
+# a) BHD-Klassen
+bhd_klassen <- seq(10, 60, by = 10)
+bhd_klassen
+
+# b) Standorte wiederholen
+standorte <- rep(c("Nord", "Sued", "Ost"), times = 3)
+standorte
+```
+
+## Aufgabe 1.4 – Baumarten als names
+
+```{r a1-4}
+# Namen zuweisen
+names(baumhoehen) <- c("Fi", "Fi", "Bu", "Ki", "Bu", "La", "Ki", "Do", "Bu", "Fi")
+baumhoehen
+
+# Höhen der Buchen
+baumhoehen[names(baumhoehen) == "Bu"]
+```
+
+## Aufgabe 1.5 – Eigene Funktion
+
+```{r a1-5}
+grundflaeche <- function(bhd) {
+  pi * (bhd / 200)^2
+}
+
+# Test: BHD = 30 cm -> erwartet ~0.0707 m²
+grundflaeche(30)
+round(grundflaeche(30), 4)
+```
+
+---
+
+# Block 2 – Data Frames & CSV
+
+## Aufgabe 2.1 – Datensatz einlesen
+
+```{r a2-1}
+bestand <- read.csv("../data/bestand.csv")
+
+# a) Dimensionen
+nrow(bestand)
+ncol(bestand)
+dim(bestand)
+
+# b) Erste 6 Zeilen
+head(bestand)
+
+# c) Struktur
+str(bestand)
+```
+
+## Aufgabe 2.2 – Spalten ansprechen
+
+```{r a2-2}
+# a) Spalte baumart
+bestand$baumart
+
+# b) Mittlere Höhe (NA-Werte ignorieren)
+mean(bestand$hoehe_m, na.rm = TRUE)
+
+# c) Anzahl verschiedener Baumarten
+length(unique(bestand$baumart))
+```
+
+## Aufgabe 2.3 – NA-Behandlung
+
+```{r a2-3}
+# a) NAs je Spalte
+colSums(is.na(bestand))
+
+# b) Bereinigter Data Frame
+bestand_clean <- bestand[complete.cases(bestand), ]
+
+# c) Vergleich
+nrow(bestand)
+nrow(bestand_clean)
+cat("Entfernte Zeilen:", nrow(bestand) - nrow(bestand_clean), "\n")
+```
+
+## Aufgabe 2.4 – Zeilen filtern (Base R)
+
+```{r a2-4}
+# a) Alle Fichten
+fichten <- bestand_clean[bestand_clean$baumart == "Fichte", ]
+head(fichten)
+
+# b) Alle Bäume mit Höhe >= 25 m
+hohe_baeume <- bestand_clean[bestand_clean$hoehe_m >= 25, ]
+nrow(hohe_baeume)
+
+# c) Fichten auf Standort Nord
+fichten_nord <- bestand_clean[
+  bestand_clean$baumart == "Fichte" & bestand_clean$standort == "Nord",
+]
+nrow(fichten_nord)
+```
+
+## Aufgabe 2.5 – Neue Spalte & Funktion anwenden
+
+```{r a2-5}
+# Funktion definieren
+berechne_volumen <- function(hoehe, bhd) {
+  pi * (bhd / 200)^2 * hoehe * 0.5
+}
+
+# Spalte hinzufügen
+bestand_clean$volumen_m3 <- berechne_volumen(
+  hoehe = bestand_clean$hoehe_m,
+  bhd   = bestand_clean$bhd_cm
+)
+
+# b) max und mean
+max(bestand_clean$volumen_m3)
+mean(bestand_clean$volumen_m3)
+```
+
+---
+
+# Praxisprojekt – Eigener Datensatz erkunden
+
+```{r praxis}
+# Hier mit bestand_clean arbeiten
+
+# 2. Struktur und Dimensionen
+str(bestand_clean)
+dim(bestand_clean)
+
+# 3. Fehlende Werte (nach Bereinigung: keine mehr)
+colSums(is.na(bestand_clean))
+
+# 4. Hilfsfunktion: Stammzahl je Baumart
+anzahl_je_art <- function(df, art) {
+  nrow(df[df$baumart == art, ])
+}
+anzahl_je_art(bestand_clean, "Fichte")
+anzahl_je_art(bestand_clean, "Buche")
+
+# 5. Erste Kennzahlen
+summary(bestand_clean$hoehe_m)
+sd(bestand_clean$hoehe_m)
+table(bestand_clean$baumart)
+```
+
+---
+
+# Bonusaufgabe
+
+```{r bonus}
+beschreibe_vektor <- function(x, na.rm = TRUE) {
+  c(
+    n    = length(x[!is.na(x)]),
+    min  = round(min(x, na.rm = na.rm), 1),
+    max  = round(max(x, na.rm = na.rm), 1),
+    mean = round(mean(x, na.rm = na.rm), 1),
+    sd   = round(sd(x, na.rm = na.rm), 1)
+  )
+}
+
+# Test
+beschreibe_vektor(bestand_clean$hoehe_m)
+```
